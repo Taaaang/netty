@@ -270,7 +270,7 @@ static jint netty_epoll_native_epollWait0(JNIEnv* env, jclass clazz, jint efd, j
                     // we may be not 100 % accurate and ignore anything that is smaller then 1 ms.
                     millis > 10 ||
                     tvSec > 0) {
-                millis += tv_sec * 1000;
+                millis += tvSec * 1000;
                 return netty_epoll_native_epollWait(env, clazz, efd, address, len, millis);
             }
         }
@@ -284,7 +284,7 @@ static jint netty_epoll_native_epollWait0(JNIEnv* env, jclass clazz, jint efd, j
             struct epoll_event *ev = (struct epoll_event*) (intptr_t) address;
             int result, err;
             do {
-                result = epoll_pwait2(efd, ev, len, &ts);
+                result = epoll_pwait2(efd, ev, len, &ts, NULL);
                 if (result >= 0) {
                     return result;
                 }
