@@ -150,8 +150,6 @@ public final class Native {
     private static native int timerFd();
     public static native void eventFdWrite(int fd, long value);
     public static native void eventFdRead(int fd);
-    static native void timerFdRead(int fd);
-    static native void timerFdSetTime(int fd, int sec, int nsec) throws IOException;
 
     public static FileDescriptor newEpollCreate() {
         return new FileDescriptor(epollCreate());
