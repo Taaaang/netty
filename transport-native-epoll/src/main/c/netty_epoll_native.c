@@ -274,13 +274,11 @@ static jint netty_epoll_native_epollWait0(JNIEnv* env, jclass clazz, jint efd, j
                 return netty_epoll_native_epollWait(env, clazz, efd, address, len, millis);
             }
         }
-        struct itimerspec ts;
-        memset(&ts.it_interval, 0, sizeof(struct timespec));
-        ts.it_value.tv_sec = tvSec;
-        ts.it_value.tv_nsec = tvNsec;
+
         if (epoll_pwait2) {
             // We have epoll_pwait2(...), this means we can just pass in the itimerspec directly and not need an
             // extra syscall even for very small timeouts.
+            struct timespec ts = { tvSec, tvNsec };
             struct epoll_event *ev = (struct epoll_event*) (intptr_t) address;
             int result, err;
             do {
@@ -291,6 +289,10 @@ static jint netty_epoll_native_epollWait0(JNIEnv* env, jclass clazz, jint efd, j
             } while((err = errno) == EINTR);
             return -err;
         }
+        struct itimerspec ts;
+        memset(&ts.it_interval, 0, sizeof(struct timespec));
+        ts.it_value.tv_sec = tvSec;
+        ts.it_value.tv_nsec = tvNsec;
         if (timerfd_settime(timerFd, 0, &ts, NULL) < 0) {
             netty_unix_errors_throwChannelExceptionErrorNo(env, "timerfd_settime() failed: ", errno);
             return -1;
