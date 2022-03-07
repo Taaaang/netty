@@ -79,6 +79,7 @@ class EpollEventLoop extends SingleThreadEventLoop {
     //    other value T    when EL is waiting with wakeup scheduled at time T
     private final AtomicLong nextWakeupNanos = new AtomicLong(AWAKE);
     private boolean pendingWakeup;
+    private boolean usedTimer;
     private volatile int ioRatio = 50;
 
     // See https://man7.org/linux/man-pages/man2/timerfd_create.2.html.
@@ -277,13 +278,17 @@ class EpollEventLoop extends SingleThreadEventLoop {
     }
 
     private int epollWait(long deadlineNanos) throws IOException {
+        final long result;
         if (deadlineNanos == NONE) {
-            return Native.epollWait(epollFd, events, timerFd, Integer.MAX_VALUE, 0); // disarm timer
+            result = Native.epollWaitWithoutTimer(epollFd, events, timerFd, Integer.MAX_VALUE, 0); // disarm timer
+        } else {
+            long totalDelay = deadlineToDelayNanos(deadlineNanos);
+            int delaySeconds = (int) min(totalDelay / 1000000000L, Integer.MAX_VALUE);
+            int delayNanos = (int) min(totalDelay - delaySeconds * 1000000000L, MAX_SCHEDULED_TIMERFD_NS);
+            result = Native.epollWaitWithoutTimer(epollFd, events, timerFd, delaySeconds, delayNanos);
         }
-        long totalDelay = deadlineToDelayNanos(deadlineNanos);
-        int delaySeconds = (int) min(totalDelay / 1000000000L, Integer.MAX_VALUE);
-        int delayNanos = (int) min(totalDelay - delaySeconds * 1000000000L, MAX_SCHEDULED_TIMERFD_NS);
-        return Native.epollWait(epollFd, events, timerFd, delaySeconds, delayNanos);
+        usedTimer = ((int) result) == 1;
+        return (int) (result >> 32);
     }
 
     private int epollWaitNoTimerChange() throws IOException {
@@ -342,7 +347,7 @@ class EpollEventLoop extends SingleThreadEventLoop {
                         nextWakeupNanos.set(curDeadlineNanos);
                         try {
                             if (!hasTasks()) {
-                                if (curDeadlineNanos == prevDeadlineNanos) {
+                                if (!usedTimer && curDeadlineNanos == prevDeadlineNanos) {
                                     // No timer activity needed
                                     strategy = epollWaitNoTimerChange();
                                 } else {
