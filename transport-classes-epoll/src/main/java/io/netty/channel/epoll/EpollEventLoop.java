@@ -351,7 +351,7 @@ class EpollEventLoop extends SingleThreadEventLoop {
                                     long result = epollWait(curDeadlineNanos);
                                     if ((result & 0xff) == 0) {
                                         prevDeadlineNanos = NONE;
-                                    };
+                                    }
                                     strategy = (int) (result >> 32);
                                 }
                             }
