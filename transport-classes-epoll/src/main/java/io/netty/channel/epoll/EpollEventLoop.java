@@ -79,7 +79,6 @@ class EpollEventLoop extends SingleThreadEventLoop {
     //    other value T    when EL is waiting with wakeup scheduled at time T
     private final AtomicLong nextWakeupNanos = new AtomicLong(AWAKE);
     private boolean pendingWakeup;
-    private boolean usedTimer;
     private volatile int ioRatio = 50;
 
     // See https://man7.org/linux/man-pages/man2/timerfd_create.2.html.
@@ -277,18 +276,14 @@ class EpollEventLoop extends SingleThreadEventLoop {
         return channels.size();
     }
 
-    private int epollWait(long deadlineNanos) throws IOException {
-        final long result;
+    private long epollWait(long deadlineNanos) throws IOException {
         if (deadlineNanos == NONE) {
-            result = Native.epollWaitWithoutTimer(epollFd, events, timerFd, Integer.MAX_VALUE, 0); // disarm timer
-        } else {
-            long totalDelay = deadlineToDelayNanos(deadlineNanos);
-            int delaySeconds = (int) min(totalDelay / 1000000000L, Integer.MAX_VALUE);
-            int delayNanos = (int) min(totalDelay - delaySeconds * 1000000000L, MAX_SCHEDULED_TIMERFD_NS);
-            result = Native.epollWaitWithoutTimer(epollFd, events, timerFd, delaySeconds, delayNanos);
+            return Native.epollWaitWithoutTimer(epollFd, events, timerFd, Integer.MAX_VALUE, 0); // disarm timer
         }
-        usedTimer = (int) (result & 0xff) == 1;
-        return (int) (result >> 32);
+        long totalDelay = deadlineToDelayNanos(deadlineNanos);
+        int delaySeconds = (int) min(totalDelay / 1000000000L, Integer.MAX_VALUE);
+        int delayNanos = (int) min(totalDelay - delaySeconds * 1000000000L, MAX_SCHEDULED_TIMERFD_NS);
+        return Native.epollWaitWithoutTimer(epollFd, events, timerFd, delaySeconds, delayNanos);
     }
 
     private int epollWaitNoTimerChange() throws IOException {
@@ -347,13 +342,17 @@ class EpollEventLoop extends SingleThreadEventLoop {
                         nextWakeupNanos.set(curDeadlineNanos);
                         try {
                             if (!hasTasks()) {
-                                if (!usedTimer && curDeadlineNanos == prevDeadlineNanos) {
+                                if (curDeadlineNanos == prevDeadlineNanos) {
                                     // No timer activity needed
                                     strategy = epollWaitNoTimerChange();
                                 } else {
                                     // Timerfd needs to be re-armed or disarmed
                                     prevDeadlineNanos = curDeadlineNanos;
-                                    strategy = epollWait(curDeadlineNanos);
+                                    long result = epollWait(curDeadlineNanos);
+                                    if ((result & 0xff) == 0) {
+                                        prevDeadlineNanos = NONE;
+                                    };
+                                    strategy = (int) (result >> 32);
                                 }
                             }
                         } finally {

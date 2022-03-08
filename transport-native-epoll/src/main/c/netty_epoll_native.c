@@ -276,7 +276,7 @@ static jlong netty_epoll_native_epollWait0(JNIEnv* env, jclass clazz, jint efd, 
                       return ((jlong) (uint64_t) ((uint32_t) result) << 32 | armTimer);
                     }
                 } while((err = errno) == EINTR);
-                return -err;
+                return (jlong) ((uint64_t) ((uint32_t) -err) << 32 | armTimer);
             }
 
             int millis = tvNsec / 1000000;
@@ -289,9 +289,7 @@ static jlong netty_epoll_native_epollWait0(JNIEnv* env, jclass clazz, jint efd, 
                     tvSec > 0) {
                 millis += tvSec * 1000;
                 int result = netty_epoll_native_epollWait(env, clazz, efd, address, len, millis);
-                if (result >= 0) {
-                    return (jlong) ((uint64_t) ((uint32_t) result) << 32 | armTimer);
-                }
+                return (jlong) ((uint64_t) ((uint32_t) result) << 32 | armTimer);
             }
         }
         struct itimerspec ts;
@@ -305,7 +303,7 @@ static jlong netty_epoll_native_epollWait0(JNIEnv* env, jclass clazz, jint efd, 
         armTimer = 1;
     }
     int result = netty_epoll_native_epollWait(env, clazz, efd, address, len, -1);
-    return ((jlong) (uint64_t) ((uint32_t) result) << 32 | armTimer);
+    return (jlong) ((uint64_t) ((uint32_t) result) << 32 | armTimer);
 }
 
 static inline void cpu_relax() {
