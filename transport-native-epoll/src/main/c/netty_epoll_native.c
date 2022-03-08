@@ -260,7 +260,7 @@ static jlong netty_epoll_native_epollWait0(JNIEnv* env, jclass clazz, jint efd, 
     // -1 is a special value used by EpollEventLoop.
     uint32_t armTimer = 0;
     if (tvSec != ((jint) -1) && tvNsec != ((jint) -1)) {
-        if (alwaysUseTimer == JNI_FALSE && (tvSec != 0 || tvNSec != 0)) {
+        if (alwaysUseTimer == JNI_FALSE && (tvSec != 0 || tvNsec != 0)) {
             // Let's try to reduce the syscalls as much as possible as timerfd_settime(...) can be expensive:
             // See https://github.com/netty/netty/issues/11695
 

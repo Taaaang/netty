@@ -180,8 +180,9 @@ public final class Native {
         }
         long ready = epollWait0(epollFd.intValue(), events.memoryAddress(), events.length(), timerFd.intValue(),
                 timeoutSec, timeoutNs, alwaysUseTimer);
-        if (ready < 0) {
-            throw newIOException("epoll_wait", (int) ready);
+        int result = (int) (ready >> 32);
+        if (result < 0) {
+            throw newIOException("epoll_wait", result);
         }
         return ready;
     }
