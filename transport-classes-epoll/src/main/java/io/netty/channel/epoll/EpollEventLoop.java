@@ -278,12 +278,12 @@ class EpollEventLoop extends SingleThreadEventLoop {
 
     private long epollWait(long deadlineNanos) throws IOException {
         if (deadlineNanos == NONE) {
-            return Native.epollWaitWithoutTimer(epollFd, events, timerFd, Integer.MAX_VALUE, 0); // disarm timer
+            return Native.epollWait(epollFd, events, timerFd, Integer.MAX_VALUE, 0, false); // disarm timer
         }
         long totalDelay = deadlineToDelayNanos(deadlineNanos);
         int delaySeconds = (int) min(totalDelay / 1000000000L, Integer.MAX_VALUE);
         int delayNanos = (int) min(totalDelay - delaySeconds * 1000000000L, MAX_SCHEDULED_TIMERFD_NS);
-        return Native.epollWaitWithoutTimer(epollFd, events, timerFd, delaySeconds, delayNanos);
+        return Native.epollWait(epollFd, events, timerFd, delaySeconds, delayNanos, false);
     }
 
     private int epollWaitNoTimerChange() throws IOException {

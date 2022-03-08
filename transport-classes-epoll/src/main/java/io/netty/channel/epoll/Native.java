@@ -163,25 +163,12 @@ public final class Native {
     @Deprecated
     public static int epollWait(FileDescriptor epollFd, EpollEventArray events, FileDescriptor timerFd,
                                 int timeoutSec, int timeoutNs) throws IOException {
-        if (timeoutSec == 0 && timeoutNs == 0) {
-            // Zero timeout => poll (aka return immediately)
-            return epollWait(epollFd, events, 0);
-        }
-        if (timeoutSec == Integer.MAX_VALUE) {
-            // Max timeout => wait indefinitely: disarm timerfd first
-            timeoutSec = 0;
-            timeoutNs = 0;
-        }
-        int ready = (int) epollWait0(epollFd.intValue(), events.memoryAddress(), events.length(), timerFd.intValue(),
-                               timeoutSec, timeoutNs, true);
-        if (ready < 0) {
-            throw newIOException("epoll_wait", ready);
-        }
-        return ready;
+        long result = epollWait(epollFd, events, timerFd, timeoutSec, timeoutNs, true);
+        return (int) (result >> 32);
     }
 
-    static long epollWaitWithoutTimer(FileDescriptor epollFd, EpollEventArray events, FileDescriptor timerFd,
-                                int timeoutSec, int timeoutNs) throws IOException {
+    static long epollWait(FileDescriptor epollFd, EpollEventArray events, FileDescriptor timerFd,
+                                int timeoutSec, int timeoutNs, boolean alwaysUseTimer) throws IOException {
         if (timeoutSec == 0 && timeoutNs == 0) {
             // Zero timeout => poll (aka return immediately)
             return epollWait(epollFd, events, 0);
@@ -192,7 +179,7 @@ public final class Native {
             timeoutNs = 0;
         }
         long ready = epollWait0(epollFd.intValue(), events.memoryAddress(), events.length(), timerFd.intValue(),
-                timeoutSec, timeoutNs, false);
+                timeoutSec, timeoutNs, alwaysUseTimer);
         if (ready < 0) {
             throw newIOException("epoll_wait", (int) ready);
         }
