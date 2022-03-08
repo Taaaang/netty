@@ -287,7 +287,7 @@ class EpollEventLoop extends SingleThreadEventLoop {
             int delayNanos = (int) min(totalDelay - delaySeconds * 1000000000L, MAX_SCHEDULED_TIMERFD_NS);
             result = Native.epollWaitWithoutTimer(epollFd, events, timerFd, delaySeconds, delayNanos);
         }
-        usedTimer = ((int) result) == 1;
+        usedTimer = (int) (result & 0xff) == 1;
         return (int) (result >> 32);
     }
 
